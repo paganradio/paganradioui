@@ -1,23 +1,26 @@
 <template>
   <div class="ChatboxComponent">
-    <ChatboxInputComponent />
+    <MenuComponent />
     <ChatboxOutputComponent />
+    <ChatboxInputComponent />
   </div>
 </template>
 
 <script>
 import ChatboxInputComponent from "@/components/ChatboxInputComponent";
 import ChatboxOutputComponent from "@/components/ChatboxOutputComponent";
-import io from "socket.io-client";
+import MenuComponent from "@/components/MenuComponent.vue";
+//import io from "socket.io-client";
 export default {
   name: "ChatboxComponent",
   components: {
     ChatboxInputComponent,
+    MenuComponent,
     ChatboxOutputComponent,
   },
   data() {
     return {
-      socket: io("https://paganradiolive.com/", { path: "/ws/" }),
+      //socket: io("https://paganradiolive.com")
     };
   },
 };

@@ -7,6 +7,9 @@
     <div class="infoContainer">
       <InfoComponent />
     </div>
+    <div class="authContainer">
+      <AuthComponent/>
+    </div>
   </div>
 </template>
 
@@ -14,12 +17,14 @@
 import VideosComponent from "@/components/VideosComponent.vue";
 import InfoComponent from "@/components/InfoComponent.vue";
 import ChatboxComponent from "@/components/ChatboxComponent.vue";
+import AuthComponent from '@/components/AuthComponent.vue';
 export default {
   name: "Main",
   components: {
     VideosComponent,
     InfoComponent,
-    ChatboxComponent
+    ChatboxComponent,
+    AuthComponent
   }
 };
 </script>
@@ -30,5 +35,9 @@ export default {
 }
 .contentContainer {
   height: 95%;
+}
+.authContainer {
+  height:100%;
+  width:100%;
 }
 </style>

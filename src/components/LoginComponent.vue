@@ -3,16 +3,32 @@
         <div class = "LoginForm">
             <input v-model="user.username" id = "username" placeholder="username">
             <input type ="password" v-model="user.password" id = "password" placeholder="password">
-            <button class = "login btn">Login</button>
+            <button v-on:click="submit" class = "login btn">Login</button>
         </div>
     </div>
 </template>
 
 <script>
 import axios from 'axios'
+axios.defaults.baseURL = 'http:' + '//' + 'localhost' + ':' + '8080';
+axios.defaults.headers.common = {
+  "Content-Type": "application/x-www-form-urlencoded"
+}
+async function loginUser(user){
+    try
+    {
+        const response =  await axios.post("http://localhost:8080/api/auth/login", user, { withCredentials:true});
+        return response;
+    }
+    catch(err) 
+    {
+        console.log(err);
+    }
+}
+
 export default {
-  name: "LoginComponent",
-  data() {
+name: "LoginComponent",
+data() {
     return {
         user:{
             username: "",
@@ -22,19 +38,17 @@ export default {
   },
   methods: {
     async submit(){
-    try{
-        const response = await axios.post("https://paganradiolive.com/api/auth/login", this.user, { withCredentials:true});
+        const response = await loginUser(this.user);
         if (response.status == '200')
         {
-            console.log('you have been authorised');
+            this.$emit('login', response);
         }
-    }
-    catch(err) {
-        console.log(err);
-    }
+    },
+    async login(user){
+        return await loginUser(user);
     }
   }
-}
+};
 
 
 </script>

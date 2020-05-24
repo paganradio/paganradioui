@@ -5,6 +5,7 @@
             <input type ="password" v-model="user.password" id = "password" placeholder="password">
             <input type ="email" v-model="user.email" id = "email" placeholder="email">
             <button v-on:click="submit" class = "signup btn">Sign up</button>
+            <p>{{error}}</p>
         </div>
     </div>
 </template>
@@ -13,6 +14,10 @@
 
 <script>
 import axios from 'axios'
+axios.defaults.baseURL = 'http:' + '//' + 'localhost' + ':' + '8080';
+axios.defaults.headers.common = {
+  "Content-Type": "application/x-www-form-urlencoded"
+}
 export default {
     data() {
     return {
@@ -21,15 +26,20 @@ export default {
             username: "",
             password: "",
             email: ""
-        }
+
+        },
+        error : "no error"
     };
   },
   methods: {
     async submit() {
         try{
-            const response = await axios.post("https://paganradiolive.com/api/auth/signup", this.user, { withCredentials:true});
-            //const response = await axios.post("https://paganradiolive.com/api/auth/signup", this.user);
-            console.log(response);
+            const response = await axios.post("/api/auth/signup", this.user, { withCredentials:true});
+            if (response.status == '200')
+            {
+                response.user = this.user;
+                this.$emit('registered', response);
+            }
         }
         catch(err)
         {

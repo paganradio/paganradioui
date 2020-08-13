@@ -18,160 +18,178 @@ export default {
   },
   data() {
     return {
-      videos: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }],
-      participants: [],
+      videos: [
+        { id: 0, streamer: null },
+        { id: 1, streamer: null },
+        { id: 2, streamer: null },
+        { id: 3, streamer: null },
+      ],
+      receivers: [],
       socket: {},
+      iceCandidateQueues: [],
+      videoID: -1,
     };
   },
   methods: {
     OnLogin: function (socket) {
       this.socket = socket;
-    },
-    OnJoinClick: function (vidID) {
-      this.socket.on("message", (message) => {
+      socket.on("message", (message) => {
+        console.log(message);
         switch (message.event) {
-          case "newParticipantArrived":
-            this.ReceiveVideo(
-              message.userid,
-              message.username,
-              message.videoID
+          case "StreamerAnswer":
+            this.StreamerAnswer(message);
+            break;
+          case "ReceiverAnswer":
+            this.ReceiverAnswer(message);
+            break;
+          case "ExistingStreamers":
+            this.GetStreams(message.streamers);
+            break;
+          case "NewStreamerConnected":
+            this.GetStreams(message.streamers);
+            break;
+          // response from server, ice candidates for corresponding endpoint
+          case "OnStreamerIceCandidate":
+            if (this.videoID !== -1)
+              this.videos[this.videoID].streamer.webRtcPeer.addIceCandidate(
+                message.candidate
+              );
+            break;
+          case "OnReceiverIceCandidate":
+            var video = this.videos.find(
+              (x) => x.streamer.id == message.streamerid
             );
+            video.streamer.webRtcPeer.addIceCandidate(message.candidate);
             break;
-          case "existingParticipants":
-            this.OnExistingParticipants(message);
-            break;
-          case "candidate":
-            this.AddIceCandidate(message.userid, message.candidate);
+          case "StreamerDisconnected":
+            this.DisconnectFrom(message.streamerid);
             break;
         }
       });
+      this.SendMessage({ event: "ExistingStreamers" });
+    },
+    DisconnectFrom(streamerid) {
+      var video = this.videos.find((x) => x.streamer.id == streamerid);
 
+      var videoComponent = this.$refs.videos[video.id];
+      videoComponent.StreamerDisconnected();
+
+      video.streamer = null;
+    },
+    ReceiverAnswer(message) {
+      var video = this.videos.find((x) => x.streamer.id == message.streamerid);
+      if (video) {
+        video.streamer.webRtcPeer.processAnswer(message.sdpAnswer);
+      } else console.log("cant find streamer");
+    },
+    StreamerAnswer(message) {
+      console.log(this.videos[this.videoID].streamer);
+      if (this.videoID !== -1)
+        this.videos[this.videoID].streamer.webRtcPeer.processAnswer(
+          message.answerSdp
+        );
+    },
+    GetStreams(streamers) {
+      console.log(streamers);
+      // bind streamer to local video id
+      streamers.forEach((streamer) => {
+        var video = this.videos.find((video) => video.streamer == null);
+
+        video.streamer = {
+          username: streamer.username,
+          id: streamer.id,
+          WebRtcPeer: null,
+        };
+
+        this.GetStream(video);
+      });
+    },
+    GetStream(video) {
+      var videoComponent = this.$refs.videos[video.id];
+      videoComponent.StreamerConnected(video.streamer.username);
+      var remoteVideo = videoComponent.GetVideo();
+      var thisvue = this;
+      var options = {
+        remoteVideo: remoteVideo,
+        onicecandidate: OnReceiverIceCandidate,
+      };
+
+      video.streamer.webRtcPeer = kurentoUtils.WebRtcPeer.WebRtcPeerRecvonly(
+        options,
+        function (error) {
+          if (error) console.log(error);
+          this.generateOffer(OnOfferReceiver);
+        }
+      );
+      // create receive only peers here
+      function OnOfferReceiver(error, offerSdp) {
+        if (error) console.log(error);
+        var message = {
+          event: "ReceiverOffer",
+          streamerid: video.streamer.id,
+          sdpOffer: offerSdp,
+        };
+        thisvue.SendMessage(message);
+      }
+      function OnReceiverIceCandidate(candidate) {
+        console.log(candidate);
+        var message = {
+          event: "OnReceiverIceCandidate",
+          streamerid: video.streamer.id,
+          candidate: candidate,
+        };
+        thisvue.SendMessage(message);
+      }
+    },
+    SendStream(videoID) {
+      console.log(videoID);
+      var videoComponent = this.$refs.videos[videoID];
+      var localVideo = videoComponent.GetVideo();
+      var thisvue = this;
+      localVideo.autoplay = true;
+      var options = {
+        localVideo: localVideo,
+        onicecandidate: this.OnStreamerIceCandidate,
+      };
+
+      var videoData = this.videos.find((video) => video.id === videoID);
+      var webRtcPeer = kurentoUtils.WebRtcPeer.WebRtcPeerSendonly(
+        options,
+        function (error) {
+          if (error) console.log(error);
+          this.generateOffer(thisvue.OnOfferStreamer);
+        }
+      );
+      this.videoID = videoID;
+      videoData.streamer = {
+        username: "me",
+        id: this.socket.id,
+        webRtcPeer: webRtcPeer,
+      };
+    },
+    OnOfferStreamer(error, offerSdp) {
+      if (error) console.log(error);
       var message = {
-        event: "join",
-        videoID: vidID,
+        event: "StreamerOffer",
+        sdpOffer: offerSdp,
       };
       this.SendMessage(message);
     },
+    OnStreamerIceCandidate(candidate) {
+      console.log(candidate);
+      var message = {
+        event: "OnStreamerIceCandidate",
+        candidate: candidate,
+      };
+      this.SendMessage(message);
+    },
+    OnJoinClick: function (videoID) {
+      this.SendStream(videoID);
+    },
     // at this point we've been assigned a userid(socketid)
-    OnExistingParticipants: async function (message) {
-      var thisvue = this;
-      var videoComponent = this.$refs.videos[message.videoID];
-      var video = videoComponent.GetVideo();
-      video.id = message.userid;
-      video.autoplay = true;
-      console.log(this.$refs.videos[message.videoID].username);
-      console.log(video);
-
-      var user = {
-        id: message.userid,
-        username: message.userName,
-        video: video,
-        rtcPeer: null,
-        videoID: message.videoID,
-      };
-
-      this.participants[message.userid] = user;
-
-      var constraints = videoComponent.constraints;
-
-      var options = {
-        localVideo: video,
-        mediaConstraints: constraints,
-        onicecandidate: OnIceCandidate,
-      };
-      console.log(options);
-      user.rtcPeer = kurentoUtils.WebRtcPeer.WebRtcPeerSendonly(
-        options,
-        function (err) {
-          if (err) {
-            return console.error(err);
-          }
-          this.generateOffer(onOffer);
-        }
-      );
-
-      message.existingUsers.forEach(function (element) {
-        thisvue.ReceiveVideo(element.id, element.name, element.videoID);
-      });
-
-      function onOffer(err, offer) {
-        var receiveMessage = {
-          event: "receiveVideoFrom",
-          userid: user.id,
-          sdpOffer: offer,
-        };
-        thisvue.SendMessage(receiveMessage);
-      }
-
-      function OnIceCandidate(candidate) {
-        var iceCandidateMessage = {
-          event: "candidate",
-          userid: message.userid,
-          candidate: candidate,
-        };
-        thisvue.SendMessage(iceCandidateMessage);
-      }
-    },
-    ReceiveVideo: function (userid, username, videoID) {
-      var thisvue = this;
-      console.log(videoID);
-      var videoComponent = this.$refs.videos[videoID];
-      var video = videoComponent.GetVideo();
-      video.autoplay = true;
-      video.id = userid;
-
-      var user = {
-        id: userid,
-        username: username,
-        video: video,
-        rtcPeer: null,
-        videoID: videoID,
-      };
-
-      var options = {
-        remoteVideo: video,
-        onicecandidate: onIceCandidate,
-      };
-
-      this.participants[userid] = user;
-
-      user.rtcPeer = kurentoUtils.WebRtcPeer.WebRtcPeerRecvonly(
-        options,
-        function (err) {
-          if (err) {
-            return console.error(err);
-          }
-          this.generateOffer(onOffer);
-        }
-      );
-
-      function onOffer(err, offer) {
-        var message = {
-          event: "receiveVideoFrom",
-          userid: userid,
-          sdpOffer: offer,
-        };
-        thisvue.SendMessage(message);
-      }
-
-      function onIceCandidate(candidate) {
-        var message = {
-          event: "candidate",
-          userid: user.id,
-          candidate: candidate,
-        };
-        thisvue.SendMessage(message);
-      }
-    },
     SendMessage: function (message) {
       console.log("sending " + message.event + " message to server");
       this.socket.emit("message", message);
-    },
-    AddIceCandidate: function (userid, candidate) {
-      this.participants[userid].rtcPeer.addIceCandidate(candidate);
-    },
-    OnReceiveVideoAnswer: function (senderid, sdpAnswer) {
-      this.participants[senderid].rtcPeer.processAnswer(sdpAnswer);
     },
   },
 };
@@ -179,16 +197,13 @@ export default {
 
 <style scoped>
 .VideosComponent {
+  margin: 3px;
+  padding: 3px;
+  height: 90%;
   display: grid;
   grid-template-columns: auto auto;
   grid-template-rows: auto auto;
   grid-gap: 3px;
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  height: inherit;
-  background: #555;
-  z-index: -2;
+  z-index: 0;
 }
 </style>

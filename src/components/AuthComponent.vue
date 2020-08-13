@@ -5,7 +5,11 @@
       <Button v-on:click="state = 'signup'" class="Signup btn">Signup</Button>
     </div>
     <div class="FormContainer">
-      <LoginComponent ref="loginComponent" v-if="state == 'login'" @login="loggedIn" />
+      <LoginComponent
+        ref="loginComponent"
+        v-if="state == 'login'"
+        @login="loggedIn"
+      />
       <SignupComponent v-if="state == 'signup'" @registered="registered" />
     </div>
   </div>
@@ -39,7 +43,6 @@ export default {
     },
   },
 };
-
 </script>
 
 <style scoped>

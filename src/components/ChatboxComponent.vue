@@ -152,14 +152,8 @@ export default {
 
 <style scoped>
 .ChatboxComponent {
-  height: inherit;
-  width: 25em;
-  position: absolute;
+  height: 100%;
   z-index: -1; /* Stay on top */
-  right: 0;
-  top: 0;
-  overflow-x: hidden; /* Disable horizontal scroll */
-  transition: 0.2s; /* 0.5 second transition effect to slide in the sidenav */
   outline: black solid 2px;
   outline-offset: -2px;
 }

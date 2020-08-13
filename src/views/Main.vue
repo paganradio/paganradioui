@@ -8,7 +8,11 @@
       <InfoComponent />
     </div>
     <div class="authContainer">
-      <AuthComponent v-if="!authenticated" @OnLoggedIn="loggedIn" @OnNewLoggedIn="loggedIn" />
+      <AuthComponent
+        v-if="!authenticated"
+        @OnLoggedIn="loggedIn"
+        @OnNewLoggedIn="loggedIn"
+      />
     </div>
   </div>
 </template>
@@ -17,7 +21,7 @@
 import VideosComponent from "@/components/VideosComponent.vue";
 import InfoComponent from "@/components/InfoComponent.vue";
 import ChatboxComponent from "@/components/ChatboxComponent.vue";
-import AuthComponent from '@/components/AuthComponent.vue';
+import AuthComponent from "@/components/AuthComponent.vue";
 import io from "socket.io-client";
 export default {
   name: "Main",
@@ -25,36 +29,34 @@ export default {
     VideosComponent,
     InfoComponent,
     ChatboxComponent,
-    AuthComponent
+    AuthComponent,
   },
   data() {
-    return{
-      authenticated : false
-    }
+    return {
+      authenticated: false,
+    };
   },
   methods: {
-    loggedIn(response){
+    loggedIn(response) {
       console.log(response.headers);
-      var socket = io("http://localhost:8080");
-      socket.on('connectionResponse', message => {
-        console.log(message);
-      })
+      var socket = io("http://localhost:8080/stream");
       this.authenticated = true;
       this.$refs.videosComponent.OnLogin(socket);
-    }
-  }
+    },
+  },
 };
 </script>
 
 <style>
-.infoContainer {
-  height: 5%;
+.main {
+  width: 100%;
+  height: 100%;
 }
 .contentContainer {
-  height: 95%;
-}
-.authContainer {
-  height: 100%;
+  display: grid;
   width: 100%;
+  height: 100%;
+  grid-template-columns: 80% 20%;
+  grid-gap: 3px;
 }
 </style>

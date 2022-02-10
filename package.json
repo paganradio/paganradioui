@@ -12,7 +12,7 @@
     "core-js": "^3.6.4",
     "kurento-client": "^6.13.0",
     "kurento-utils": "^6.13.1",
-    "node-sass": "^4.14.1",
+    "node-sass": "^7.0.0",
     "sass-loader": "^8.0.2",
     "socket.io-client": "^2.3.0",
     "vue": "^2.6.11",
